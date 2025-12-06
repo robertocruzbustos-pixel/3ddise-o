@@ -9,7 +9,7 @@ Calculadora de costos Lightbox
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        /* Estilos generales para el cuerpo y el contenedor */
+        /* General styles for the body and container */
         body {
             margin: 0;
             padding: 0;
@@ -34,7 +34,7 @@ Calculadora de costos Lightbox
         }
         #canvas-container {
             width: 100%;
-            aspect-ratio: 16 / 9; /* Mantiene una relación de aspecto para el 3D */
+            aspect-ratio: 16 / 9; /* Maintains an aspect ratio for 3D */
             border-radius: 8px;
             overflow: hidden;
             margin-top: 15px;
@@ -51,16 +51,16 @@ Calculadora de costos Lightbox
         <h1 class="text-3xl font-bold text-gray-800 mb-2">Visor de Diseño 3D (Implementación Fija)</h1>
         <p class="text-sm text-gray-600 mb-4">La conexión a la base de datos se ha ajustado para funcionar en GitHub Pages.</p>
 
-        <!-- Mensaje de estado -->
+        <!-- Status message -->
         <div id="status-message" class="p-3 bg-blue-100 text-blue-700 rounded-lg w-full text-center font-medium">
             Inicializando aplicación y autenticación...
         </div>
 
-        <!-- Contenedor para la escena 3D -->
+        <!-- Container for the 3D scene -->
         <div id="canvas-container"></div>
     </div>
 
-    <!-- Carga los módulos de Firebase -->
+    <!-- Load Firebase modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -68,9 +68,7 @@ Calculadora de costos Lightbox
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // =========================================================================
-        // PASO 1: CONFIGURACIÓN DE FIREBASE PARA ALOJAMIENTO EXTERNO (IMPORTANTE)
-        // *** DEBES REEMPLAZAR TODOS ESTOS VALORES CON LA CONFIGURACIÓN REAL DE TU PROYECTO FIREBASE ***
-        // Si dejas los placeholders, la base de datos NO funcionará.
+        // STEP 1: FIXED FIREBASE CONFIGURATION
         // =========================================================================
         const firebaseConfig = {
             apiKey: "AIzaSyA1Yy13XMF2oB7KkFJVPOKvp8z01YiuNF0", 
@@ -78,11 +76,11 @@ Calculadora de costos Lightbox
             projectId: "calculador-de-costos-c4f71",
             storageBucket: "calculador-de-costos-c4f71.firebasestorage.app",
             messagingSenderId: "880952513286",
-            appId: "3a6798f1ead2527977c487"
+            appId: "3a6798f1ead2527977c487",
             measurementId: "G-DK98EWYVE9"
         };
         
-        // Define un ID de app fijo, ya que __app_id no existe en GitHub Pages
+        // Define a fixed app ID, as __app_id does not exist on GitHub Pages
         const appId = "3ddiseno-app-fija"; 
         
         const statusEl = document.getElementById('status-message');
@@ -90,7 +88,7 @@ Calculadora de costos Lightbox
         let db, auth;
         let userId;
 
-        // Función para inicializar la escena 3D (parte visual de tu app)
+        // Function to initialize the 3D scene (visual part of your app)
         function initThreeJS() {
             const container = document.getElementById('canvas-container');
             const scene = new THREE.Scene();
@@ -100,13 +98,13 @@ Calculadora de costos Lightbox
             renderer.setSize(container.clientWidth, container.clientHeight);
             container.appendChild(renderer.domElement);
 
-            // Objeto 3D de ejemplo (Cubo)
+            // Example 3D object (Cube)
             const geometry = new THREE.BoxGeometry(1, 1, 1);
             const material = new THREE.MeshPhongMaterial({ color: 0x0056b3 });
             const cube = new THREE.Mesh(geometry, material);
             scene.add(cube);
 
-            // Luces
+            // Lights
             const light = new THREE.DirectionalLight(0xffffff, 1);
             light.position.set(5, 5, 5).normalize();
             scene.add(light);
@@ -114,11 +112,11 @@ Calculadora de costos Lightbox
 
             camera.position.z = 3;
 
-            // Bucle de animación
+            // Animation loop
             function animate() {
                 requestAnimationFrame(animate);
 
-                // Animación simple para que se vea activo
+                // Simple animation for activity indication
                 cube.rotation.x += 0.005;
                 cube.rotation.y += 0.005;
 
@@ -127,7 +125,7 @@ Calculadora de costos Lightbox
             
             animate();
 
-            // Manejo de redimensionamiento
+            // Handle resizing
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
@@ -135,73 +133,72 @@ Calculadora de costos Lightbox
             });
         }
 
-        // Función para inicializar la base de datos y listeners
+        // Function to initialize the database and listeners
         function initializeDatabase(dbInstance, authInstance) {
             db = dbInstance;
             auth = authInstance;
             userId = auth.currentUser.uid;
             
-            // Muestra el ID de usuario para confirmación (opcional pero útil)
-            console.log("Autenticación completada. User ID:", userId);
+            // Show user ID for confirmation (optional but useful)
+            console.log("Authentication complete. User ID:", userId);
 
-            // Aquí se inicializan tus listeners de Firestore, por ejemplo:
-            // Escucha una colección pública para cargar los diseños 3D
+            // Firestore listeners are initialized here, for example:
+            // Listen to a public collection to load 3D designs
             const designsCollectionRef = collection(db, "artifacts", appId, "public", "data", "designs");
             
             onSnapshot(designsCollectionRef, (snapshot) => {
                 statusEl.textContent = `Datos cargados. Diseños encontrados: ${snapshot.docs.length}. ¡Listo!`;
                 
-                // Aquí iría la lógica para procesar los diseños (snapshot.docs)
-                // y actualizar la escena 3D si fuera necesario.
+                // Logic to process the designs (snapshot.docs) would go here
+                // and update the 3D scene if necessary.
 
             }, (error) => {
-                console.error("Error al escuchar los datos de Firestore:", error);
+                console.error("Error listening to Firestore data:", error);
                 statusEl.textContent = `ERROR de Firestore: ${error.message}. Verifica las reglas de seguridad.`;
             });
         }
 
         // =========================================================================
-        // PASO 2: LÓGICA DE INICIALIZACIÓN Y AUTENTICACIÓN FIJA (Se ejecuta automáticamente)
+        // STEP 2: FIXED INITIALIZATION AND AUTHENTICATION LOGIC (Runs automatically)
         // =========================================================================
         window.onload = function () {
-            initThreeJS(); // Inicia la parte visual inmediatamente
+            initThreeJS(); // Start the visual part immediately
 
-            if (firebaseConfig.apiKey === "TU_API_KEY_AQUI") {
-                // Si el usuario no reemplazó la configuración, cargamos solo el 3D
+            if (!firebaseConfig.apiKey) {
                 statusEl.textContent = 'AVISO: Falta la configuración de Firebase. Se carga solo el visor 3D.';
                 console.warn("ADVERTENCIA: Debes reemplazar los placeholders de firebaseConfig para que funcione la base de datos.");
                 return; 
             }
 
             try {
-                // 1. Inicializar Firebase
+                // 1. Initialize Firebase
                 const app = initializeApp(firebaseConfig);
                 const fbAuth = getAuth(app);
                 const fbDb = getFirestore(app);
                 
-                setLogLevel('error'); // Establece el nivel de log.
+                setLogLevel('debug'); // <--- LOG LEVEL CHANGED TO DEBUG for better console output
 
-                // 2. Esperar el cambio de estado de autenticación (el "portero")
+                // 2. Wait for authentication state change (the "doorman")
                 onAuthStateChanged(fbAuth, (user) => {
                     if (user) {
-                        // Usuario ya autenticado (o sign-in anónimo exitoso)
+                        // User already authenticated (or successful anonymous sign-in)
                         initializeDatabase(fbDb, fbAuth);
                     } else {
-                        // No autenticado, intentar sign-in anónimo para obtener un ID temporal
+                        // Not authenticated, attempt anonymous sign-in to get a temporary ID
                         statusEl.textContent = 'Autenticando sesión anónimamente...';
                         signInAnonymously(fbAuth)
                             .then(() => {
-                                // onAuthStateChanged se disparará de nuevo con el usuario
+                                // onAuthStateChanged will trigger again with the user
                             })
                             .catch((error) => {
-                                console.error("Error al autenticar anónimamente:", error);
+                                console.error("Error during anonymous authentication:", error);
                                 statusEl.textContent = `ERROR de Autenticación: ${error.message}`;
                             });
                     }
                 });
 
             } catch (error) {
-                console.error("Error durante la inicialización de Firebase:", error);
+                console.error("Error during Firebase initialization:", error);
                 statusEl.textContent = `ERROR FATAL: No se pudo inicializar Firebase. ${error.message}`;
             }
         }
