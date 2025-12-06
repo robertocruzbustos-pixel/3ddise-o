@@ -56,7 +56,13 @@ Calculadora de costos Lightbox
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800">Calculadora de Costos de Producción</h1>
             <p class="text-lg text-gray-600">Costos Fijos Derivados (CF/U) y Tasas Variables</p>
-            <p id="user-info" class="text-xs text-gray-400 mt-1">Usuario ID: Cargando...</p>
+            <div class="mt-2 flex justify-center items-center gap-4">
+                <button id="auth-button" class="px-4 py-2 text-sm font-semibold rounded-lg shadow transition duration-150 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.24 10.29v-2.18c0-.66.07-1.15.2-1.55l-.01-.01c-.13-.39-.37-.87-.72-1.39l-2.09 1.43c.12.36.19.78.19 1.15v2.54c0 .41-.05.81-.13 1.15l2.09 1.43c.35-.52.59-1.0.72-1.39.13-.4.2-1.04.2-1.66zm6.39 3.02c.03-.2.05-.4.05-.61 0-1.12-.22-2.19-.65-3.19l-1.92 1.32c.15.34.23.72.23 1.13 0 .21-.02.42-.06.63h-3.83c0-1.08.35-2.04.93-2.84l-1.87-1.28c-.8.64-1.31 1.54-1.52 2.53h-2.3v-2.09h-.02l-2.07 1.41c-.44 1-.68 2.07-.68 3.19s.24 2.19.68 3.19l2.07 1.41h2.3c.21.99.72 1.89 1.52 2.53l1.87-1.28c-.58-.8-.93-1.76-.93-2.84h3.83c.04.21.06.42.06.63 0 .41-.08.8-.23 1.13l1.92 1.32c.43-1 .65-2.07.65-3.19z"></path><path d="M12 24c6.63 0 12-5.37 12-12S18.63 0 12 0 0 5.37 0 12s5.37 12 12 12zm0-22c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2z"></path></svg>
+                    <span id="auth-status-text">Iniciar Sesión con Google</span>
+                </button>
+                <p id="user-info" class="text-xs text-gray-500">ID: Cargando...</p>
+            </div>
         </header>
 
         <div class="max-w-5xl mx-auto card bg-white rounded-xl border border-gray-200 p-6 md:p-10">
@@ -359,7 +365,7 @@ Calculadora de costos Lightbox
     <script type="module">
         // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         setLogLevel('Debug');
@@ -371,6 +377,11 @@ Calculadora de costos Lightbox
 
         let db, auth, userId = null;
         
+        // Elementos UI para autenticación
+        const authButton = document.getElementById('auth-button');
+        const authStatusText = document.getElementById('auth-status-text');
+        const userInfo = document.getElementById('user-info');
+
         // Estructura de Datos Global para persistencia
         window.appData = {
             baseCosts: {},      // Inputs simples y derivados del paso 1
@@ -387,6 +398,49 @@ Calculadora de costos Lightbox
             setTimeout(() => STATUS_MSG.style.display = 'none', 3000);
         }
 
+        // --- Manejadores de Autenticación de Google ---
+
+        async function signInGoogle() {
+            const provider = new GoogleAuthProvider();
+            try {
+                // Siempre usamos popup para autenticación externa
+                await signInWithPopup(auth, provider); 
+                // onAuthStateChanged manejará el resto
+            } catch (error) {
+                console.error("Error al iniciar sesión con Google:", error);
+                displayStatus(`Error de Google Auth: ${error.code}`, true);
+            }
+        }
+
+        async function signOutGoogle() {
+            try {
+                await signOut(auth);
+                displayStatus("Sesión cerrada. Volviendo a modo anónimo.");
+            } catch (error) {
+                console.error("Error al cerrar sesión:", error);
+                displayStatus("Error al cerrar sesión.", true);
+            }
+        }
+
+        function updateAuthUI(user) {
+            if (user && user.isAnonymous === false) {
+                // Usuario autenticado con Google
+                authButton.onclick = signOutGoogle;
+                authStatusText.textContent = "Cerrar Sesión";
+                authButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                authButton.classList.add('bg-red-600', 'hover:bg-red-700');
+                userInfo.textContent = `Proveedor: ${user.email}`;
+            } else {
+                // Usuario anónimo o deslogueado
+                authButton.onclick = signInGoogle;
+                authStatusText.textContent = "Iniciar Sesión con Google";
+                authButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                authButton.classList.add('bg-green-600', 'hover:bg-green-700');
+                userInfo.textContent = user && user.isAnonymous ? `ID Anónimo: ${user.uid.substring(0,6)}...` : 'ID: Desconectado';
+            }
+        }
+
+
         // --- Inicialización de Firebase ---
         async function initFirebase() {
             try {
@@ -394,27 +448,45 @@ Calculadora de costos Lightbox
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Autenticación con token personalizado o anónima
-                if (initialAuthToken) await signInWithCustomToken(auth, initialAuthToken);
-                else await signInAnonymously(auth);
+                // Autenticación inicial con token personalizado (solo para la plataforma Canvas)
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken).catch(e => {
+                        console.warn("Fallo en signInWithCustomToken, intentando signInAnonymously:", e);
+                        return signInAnonymously(auth);
+                    });
+                } else {
+                    await signInAnonymously(auth);
+                }
 
+                // Listener de estado de autenticación (clave para cargar datos)
                 onAuthStateChanged(auth, (user) => {
                     if (user) {
                         userId = user.uid;
-                        document.getElementById('user-info').textContent = `ID: ${userId.substring(0,6)}...`;
-                        loadData(); // Cargar datos del usuario una vez autenticado
+                        updateAuthUI(user);
+                        loadData(); // Cargar datos del usuario (Google o Anónimo)
+                    } else {
+                        // Desconectado o error
+                        userId = null;
+                        updateAuthUI(null);
+                        // Opcionalmente, cargar datos de un usuario por defecto si no hay nadie.
                     }
                 });
+
+                // Asignar el click handler inicial para Google Sign-In
+                authButton.onclick = signInGoogle;
+
+
             } catch (e) {
-                console.error("Error de Firebase:", e);
+                console.error("Error de Firebase (Inicialización):", e);
                 // Si falla Firebase, inicializamos con defaults
                 window.renderCustomMaterials();
                 window.renderModelSelector();
                 window.calculateCost(); 
+                userInfo.textContent = 'Error de conexión a Firebase.';
             }
         }
 
-        // Ruta de los datos del usuario en Firestore
+        // Ruta de los datos del usuario en Firestore (Datos Privados)
         const DATA_PATH = (uid) => `artifacts/${appId}/users/${uid}/calculator_v5/data`;
 
         async function loadData() {
@@ -426,39 +498,40 @@ Calculadora de costos Lightbox
                     window.appData = data;
                     
                     // Restaurar Inputs Simples (Paso 1)
-                    // Incluimos todos los inputs de Paso 1 para restaurar las nuevas variables de costos fijos
                     document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
                         const savedValue = data.baseCosts[el.id];
-                        if(el && el.type !== 'hidden' && savedValue !== undefined) el.value = savedValue;
-                        else if(el && el.type === 'hidden' && savedValue !== undefined) el.value = savedValue; // Restaurar hidden
+                        if(el && savedValue !== undefined) el.value = savedValue;
                     });
 
-                    // Si customMaterials o models no están definidos, asegurar que sean arrays/objetos
                     if (!window.appData.customMaterials) window.appData.customMaterials = [];
                     if (!window.appData.models) window.appData.models = {};
-                } 
-                // Renderizar interfaces dinámicas después de cargar
+                } else {
+                    displayStatus("No hay datos guardados. Usando valores predeterminados.");
+                }
+                
                 window.renderCustomMaterials();
                 window.renderModelSelector();
-                window.toggleModelInputs(); // Asegurar que el modo doble se actualice
-                window.calculateCost(); // Calcular inicial
-            } catch (e) { console.error("Error al cargar datos:", e); }
+                window.toggleModelInputs(); 
+                window.calculateCost(); 
+            } catch (e) { 
+                console.error("Error al cargar datos:", e);
+                displayStatus("Error al cargar datos del usuario.", true);
+            }
         }
 
         window.saveData = async function() {
             if (!userId) { 
-                console.warn("Usuario no autenticado. No se guardó.");
-                return;
+                // displayStatus("Inicia sesión para guardar tus datos.", true);
+                return; // No guardamos si no hay userId, pero tampoco mostramos error en cada input
             }
             
-            // 1. Capturar inputs base (incluyendo los inputs hidden de tasas derivadas)
+            // 1. Capturar inputs base 
             window.appData.baseCosts = {};
             document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
                 window.appData.baseCosts[el.id] = parseFloat(el.value) || 0;
             });
 
             try {
-                // Se guarda toda la estructura appData
                 await setDoc(doc(db, DATA_PATH(userId)), window.appData, { merge: true });
                 // displayStatus("Guardado en la nube"); // Comentado para evitar spam en cada input
             } catch (e) { displayStatus("Error al guardar", true); console.error(e); }
@@ -678,14 +751,24 @@ Calculadora de costos Lightbox
             }
             
             const name = key.replace(/-/g, ' ').toUpperCase();
-            if (confirm(`¿Estás seguro de eliminar el modelo: ${name}?`)) { 
+            // Utilizamos un modal personalizado en lugar de `confirm()`
+            showCustomConfirm(`¿Estás seguro de eliminar el modelo: ${name}?`, () => {
                 delete window.appData.models[key];
                 // Forzamos la carga del siguiente modelo o defaults
                 window.renderModelSelector();
                 window.saveData();
                 displayStatus("Modelo eliminado.");
+            });
+        }
+        
+        // Función de confirmación personalizada (Reemplazo de window.confirm)
+        function showCustomConfirm(message, onConfirm) {
+            // Esto es un placeholder simple, en un entorno real usarías un modal HTML/CSS
+            if (window.confirm(message)) {
+                onConfirm();
             }
         }
+
 
         // 5. Cálculo Principal: Derivación de Tasas y Asignación de Costos
         window.calculateCost = function() {
