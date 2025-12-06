@@ -5,7 +5,7 @@ Calculadora de costos Lightbox
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Costos Completa con Modos</title>
+    <title>Calculadora de Costos con Costos Fijos Derivados</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Librería para PDF -->
@@ -13,8 +13,7 @@ Calculadora de costos Lightbox
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
-        .card { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transition: all 0.3s ease; }
-        /* Estilo para el indicador de paso */
+        .card { box-shadow: 0 0 20px rgba(0, 0, 0, 0.05); transition: all 0.3s ease; }
         .step-indicator { 
             display: flex; 
             flex-direction: column; 
@@ -39,10 +38,8 @@ Calculadora de costos Lightbox
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .derived-value { font-weight: 700; color: #10b981; }
-        /* Estilos específicos para el PDF */
-        .pdf-content { background: white; padding: 20px; }
 
-        /* Estilo para inputs de tipo number que elimina las flechas */
+        /* Estilos para inputs de tipo number que elimina las flechas */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
@@ -58,7 +55,7 @@ Calculadora de costos Lightbox
     <div id="app" class="min-h-screen">
         <header class="text-center mb-8">
             <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800">Calculadora de Costos de Producción</h1>
-            <p class="text-lg text-gray-600">Gestión de Modelos y Tasas por Hora/Minuto</p>
+            <p class="text-lg text-gray-600">Costos Fijos Derivados (CF/U) y Tasas Variables</p>
             <p id="user-info" class="text-xs text-gray-400 mt-1">Usuario ID: Cargando...</p>
         </header>
 
@@ -68,7 +65,7 @@ Calculadora de costos Lightbox
             <div class="flex justify-between items-start mb-8 border-b-2 pb-4 overflow-x-auto">
                 <div id="step-1-btn" class="step-indicator active flex-1 cursor-pointer transition mx-1" onclick="showStep(1)">
                     <div class="step-indicator-dot"></div>
-                    <span class="text-xs md:text-sm">1. Tasas y Materiales</span>
+                    <span class="text-xs md:text-sm">1. Costos Base y Tasas</span>
                 </div>
                 <div id="step-2-btn" class="step-indicator flex-1 cursor-pointer transition text-gray-500 mx-1" onclick="showStep(2)">
                     <div class="step-indicator-dot"></div>
@@ -82,7 +79,7 @@ Calculadora de costos Lightbox
 
             <!-- PASO 1: COSTOS BASE, MATERIALES Y CÁLCULO DE TASAS -->
             <div id="step-1" class="step-content">
-                <h2 class="text-2xl font-bold mb-6 text-gray-800">1. Definición de Tasas y Costos Base</h2>
+                <h2 class="text-2xl font-bold mb-6 text-gray-800">1. Definición de Costos Base</h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     
                     <!-- Materiales Estándar (PLA, LED, Varios) -->
@@ -106,47 +103,52 @@ Calculadora de costos Lightbox
                                 <p class="text-xs mt-1 text-right">Costo Unitario Base: <span id="derived_costo_led" class="derived-value">0.00</span></p>
                             </div>
                             
-                            <!-- Otros Fijos -->
+                            <!-- Otros Fijos por Unidad -->
                             <div><label class="block text-xs">Fuente 12V ($/u)</label><input type="number" id="costo_fuente" value="1200" class="w-full p-2 border rounded" oninput="calculateCost()"></div>
                             <div><label class="block text-xs">Embalaje ($/u)</label><input type="number" id="costo_embalaje" value="500" class="w-full p-2 border rounded" oninput="calculateCost()"></div>
-                             <!-- Plug Hembra (Nuevo campo) -->
                             <div><label class="block text-xs">Plug Hembra ($/u)</label><input type="number" id="costo_plug_hembra" value="80" class="w-full p-2 border rounded" oninput="calculateCost()"></div>
                         </div>
                     </div>
 
-                    <!-- CÁLCULO DE COSTOS DE PRODUCCIÓN Y CIF (BASES DE ASIGNACIÓN) -->
+                    <!-- CÁLCULO DE COSTOS FIJOS Y DE PRODUCCIÓN (DERIVADOS) -->
                     <div class="space-y-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200 md:col-span-2">
-                        <h3 class="font-bold text-lg text-yellow-800">Cálculo de Tasas de Producción por Minuto</h3>
+                        <h3 class="font-bold text-lg text-yellow-800">Costos Fijos y de Producción (Derivados)</h3>
                         
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <!-- 1. CÁLCULO MOD -->
-                            <div class="p-3 bg-white rounded shadow-sm">
-                                <label class="block text-sm font-bold text-gray-700">Mano de Obra Directa (MOD)</label>
-                                <div><label class="text-xs">Costo Laboral Mensual ($)</label><input type="number" id="salario_bruto_mensual" value="450000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                <div><label class="text-xs">Minutos Productivos Mensual</label><input type="number" id="minutos_productivos_mensual" value="9600" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                <p class="text-xs mt-2 font-bold text-right">MOD/min: <span id="derived_costo_mod_minuto" class="derived-value text-yellow-600">0.00</span></p>
-                                <input type="hidden" id="costo_mod_minuto"> <!-- Campo oculto para el cálculo principal -->
-                            </div>
                             
-                            <!-- 2. CÁLCULO ENERGÍA -->
-                            <div class="p-3 bg-white rounded shadow-sm">
-                                <label class="block text-sm font-bold text-gray-700">Energía (Costo de Impresión)</label>
-                                <div><label class="text-xs">Costo Total Luz Mes ($)</label><input type="number" id="costo_luz_mensual" value="15000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <div><label class="text-xs">Consumo kWh Mes</label><input type="number" id="consumo_kwh_mensual" value="300" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                    <div><label class="text-xs">Potencia Impresora (W)</label><input type="number" id="potencia_impresora_w" value="150" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                            <!-- Box 1: TASAS VARIABLES POR MINUTO -->
+                            <div class="p-3 bg-white rounded shadow-sm md:col-span-2 grid grid-cols-2 gap-4">
+                                <div><h4 class="font-bold text-sm text-gray-700 mb-2">Tasas Variables por Minuto</h4>
+                                    <!-- CÁLCULO MOD -->
+                                    <div class="mb-3">
+                                        <div><label class="text-xs">Costo Laboral Mensual ($)</label><input type="number" id="salario_bruto_mensual" value="450000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                        <div><label class="text-xs">Minutos Productivos Mensual</label><input type="number" id="minutos_productivos_mensual" value="9600" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                        <p class="text-xs mt-1 font-bold text-right">MOD/min: <span id="derived_costo_mod_minuto" class="derived-value text-yellow-600">0.00</span></p>
+                                        <input type="hidden" id="costo_mod_minuto">
+                                    </div>
+                                    <!-- CÁLCULO ENERGÍA -->
+                                    <div>
+                                        <div><label class="text-xs">Costo Total Luz Mes ($)</label><input type="number" id="costo_luz_mensual" value="15000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            <div><label class="text-xs">Consumo kWh Mes</label><input type="number" id="consumo_kwh_mensual" value="300" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                            <div><label class="text-xs">Potencia Impresora (W)</label><input type="number" id="potencia_impresora_w" value="150" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                        </div>
+                                        <p class="text-xs mt-1 font-bold text-right">Energía/min: <span id="derived_costo_energia_minuto" class="derived-value text-yellow-600">0.00</span></p>
+                                        <input type="hidden" id="costo_energia_minuto">
+                                    </div>
                                 </div>
-                                <p class="text-xs mt-2 font-bold text-right">Energía/min: <span id="derived_costo_energia_minuto" class="derived-value text-yellow-600">0.00</span></p>
-                                <input type="hidden" id="costo_energia_minuto"> <!-- Campo oculto para el cálculo principal -->
                             </div>
 
-                            <!-- 3. CÁLCULO CIF -->
-                            <div class="p-3 bg-white rounded shadow-sm">
-                                <label class="block text-sm font-bold text-gray-700">Costos Indirectos (CIF)</label>
-                                <div><label class="text-xs">CIF Total Mensual ($)</label><input type="number" id="cif_total_mensual" value="50000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                <div><label class="text-xs">Minutos Totales Producción Mes</label><input type="number" id="minutos_produccion_mensual" value="12000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
-                                <p class="text-xs mt-2 font-bold text-right">CIF/min: <span id="derived_cif_por_minuto" class="derived-value text-yellow-600">0.00</span></p>
-                                <input type="hidden" id="cif_por_minuto"> <!-- Campo oculto para el cálculo principal -->
+                            <!-- Box 2: COSTO FIJO POR UNIDAD (CF/U) -->
+                            <div class="p-3 bg-white rounded shadow-sm md:col-span-1">
+                                <h4 class="font-bold text-sm text-gray-700 mb-2">Costo Fijo por Unidad (CF/U)</h4>
+                                <div><label class="text-xs">Renta Mensual ($)</label><input type="number" id="renta_mensual" value="100000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                <div><label class="text-xs">Salarios Fijos ($)</label><input type="number" id="salarios_fijos_mensual" value="300000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                <div><label class="text-xs">Servicios Fijos ($)</label><input type="number" id="servicios_fijos_mensual" value="50000" class="w-full p-1 border rounded" oninput="calculateCost()"></div>
+                                <div><label class="text-xs font-bold text-blue-600">Volumen Mensual (u)</label><input type="number" id="unidades_a_producir_mensual" value="500" class="w-full p-1 border rounded font-semibold" oninput="calculateCost()"></div>
+
+                                <p class="text-xs mt-2 font-bold text-right border-t pt-2">CF/U Derivado: <span id="derived_costo_fijo_unidad" class="derived-value text-blue-600">0.00</span></p>
+                                <input type="hidden" id="costo_fijo_unidad"> <!-- Campo oculto para el cálculo principal -->
                             </div>
                         </div>
                     </div>
@@ -199,7 +201,7 @@ Calculadora de costos Lightbox
                         <label class="block text-sm font-medium text-gray-700">Selecciona el tipo de cálculo:</label>
                         <select id="calculation_mode" class="w-full p-2 border rounded bg-white font-semibold" onchange="toggleModelInputs(); calculateCost();">
                             <option value="lightbox">Lightbox (Con LEDs, Fuente, Plug y Embalaje)</option>
-                            <option value="general3d">Impresión 3D General (Solo filamento y MOD/CIF)</option>
+                            <option value="general3d">Impresión 3D General (Solo filamento y MOD/Energía)</option>
                         </select>
                     </div>
 
@@ -238,7 +240,7 @@ Calculadora de costos Lightbox
                             <div><label class="text-xs">Impresión (Horas)</label><input type="number" id="horas_impresion" value="3" class="w-full p-2 border rounded" oninput="calculateCost()"></div>
                             <div><label class="text-xs">Impresión (Min)</label><input type="number" id="minutos_impresion" value="0" class="w-full p-2 border rounded" oninput="calculateCost()"></div>
                         </div>
-                        <p class="text-xs text-gray-500 mt-2">NOTA: Los tiempos de Ensamblaje e Impresión se usan para asignar los costos de MOD, Energía y CIF definidos en el Paso 1.</p>
+                        <p class="text-xs text-gray-500 mt-2">NOTA: Estos tiempos se usan para asignar los costos variables de MOD y Energía definidos en el Paso 1.</p>
                     </div>
                 </div>
 
@@ -285,12 +287,10 @@ Calculadora de costos Lightbox
                     <table class="w-full text-sm text-left mb-6">
                         <tbody class="divide-y divide-gray-100">
                             <tr><td class="py-1">PLA (Gramos)</td><td class="py-1 text-right" id="costo_pla_calc">$0.00</td></tr>
-                            <!-- Fila de LEDs y Fuente se muestran condicionalmente -->
                             <tr id="row-leds"><td class="py-1">LEDs</td><td class="py-1 text-right" id="costo_led_calc">$0.00</td></tr>
                             <tr id="row-fuente"><td class="py-1">Fuente 12V</td><td class="py-1 text-right" id="costo_fuente_calc">$0.00</td></tr>
                             <tr id="row-plug"><td class="py-1">Plug Hembra</td><td class="py-1 text-right" id="costo_plug_calc">$0.00</td></tr>
                             <tr id="row-embalaje"><td class="py-1">Embalaje</td><td class="py-1 text-right" id="costo_embalaje_calc">$0.00</td></tr>
-                            <!-- Materiales extra se insertan aquí por JS -->
                             <tr id="extra-materials-summary-start" class="hidden"></tr> 
                         </tbody>
                         <tfoot class="font-bold border-t">
@@ -298,16 +298,19 @@ Calculadora de costos Lightbox
                         </tfoot>
                     </table>
 
-                    <h3 class="font-bold text-gray-800 border-b mb-2 pb-1">Producción y Fijos</h3>
+                    <h3 class="font-bold text-gray-800 border-b mb-2 pb-1">Costos de Conversión y Fijos</h3>
                     <table class="w-full text-sm text-left mb-6">
                         <tbody class="divide-y divide-gray-100">
                             <tr><td class="py-1">Mano de Obra (MOD - Ensamblaje)</td><td class="py-1 text-right" id="costo_mod_calc">$0.00</td></tr>
                             <tr><td class="py-1">Energía (Impresión)</td><td class="py-1 text-right" id="costo_energia_calc">$0.00</td></tr>
-                            <tr><td class="py-1">CIF Asignado (Tiempo Total)</td><td class="py-1 text-right" id="costo_cif_calc">$0.00</td></tr>
+                            <tr class="bg-blue-50 font-semibold text-blue-800">
+                                <td class="py-1">Costo Fijo por Unidad (CF/U)</td>
+                                <td class="py-1 text-right" id="costo_fijo_unidad_calc">$0.00</td>
+                            </tr>
                             <tr><td class="py-1">Fijo por Unidad (Ej: Publicidad)</td><td class="py-1 text-right" id="costo_fijo_calc">$0.00</td></tr>
                         </tbody>
                         <tfoot class="font-bold border-t">
-                            <tr><td class="py-2">Subtotal Producción y Fijos</td><td class="py-2 text-right" id="subtotal_produccion">$0.00</td></tr>
+                            <tr><td class="py-2">Subtotal Conversión y Fijos</td><td class="py-2 text-right" id="subtotal_produccion">$0.00</td></tr>
                         </tfoot>
                     </table>
                     
@@ -357,7 +360,9 @@ Calculadora de costos Lightbox
         // Importaciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        setLogLevel('Debug');
 
         // Variables Globales de Canvas
         const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
@@ -410,7 +415,7 @@ Calculadora de costos Lightbox
         }
 
         // Ruta de los datos del usuario en Firestore
-        const DATA_PATH = (uid) => `artifacts/${appId}/users/${uid}/calculator_v4/data`;
+        const DATA_PATH = (uid) => `artifacts/${appId}/users/${uid}/calculator_v5/data`;
 
         async function loadData() {
             if (!userId) return;
@@ -421,10 +426,11 @@ Calculadora de costos Lightbox
                     window.appData = data;
                     
                     // Restaurar Inputs Simples (Paso 1)
-                    Object.keys(data.baseCosts || {}).forEach(id => {
-                        const el = document.getElementById(id);
-                        // Solo restaurar si el elemento existe (para evitar errores con campos nuevos)
-                        if(el && el.type !== 'hidden') el.value = data.baseCosts[id];
+                    // Incluimos todos los inputs de Paso 1 para restaurar las nuevas variables de costos fijos
+                    document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
+                        const savedValue = data.baseCosts[el.id];
+                        if(el && el.type !== 'hidden' && savedValue !== undefined) el.value = savedValue;
+                        else if(el && el.type === 'hidden' && savedValue !== undefined) el.value = savedValue; // Restaurar hidden
                     });
 
                     // Si customMaterials o models no están definidos, asegurar que sean arrays/objetos
@@ -446,6 +452,7 @@ Calculadora de costos Lightbox
             }
             
             // 1. Capturar inputs base (incluyendo los inputs hidden de tasas derivadas)
+            window.appData.baseCosts = {};
             document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
                 window.appData.baseCosts[el.id] = parseFloat(el.value) || 0;
             });
@@ -461,8 +468,12 @@ Calculadora de costos Lightbox
     </script>
 
     <script>
-        // --- Lógica de la Aplicación ---
+        // --- Lógica de la Aplicación (No necesita módulos) ---
         
+        // Función auxiliar para obtener valores numéricos
+        const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+
         // 1. Gestión de Materiales Personalizados
         window.addCustomMaterial = function() {
             const id = 'mat_' + Date.now();
@@ -678,9 +689,7 @@ Calculadora de costos Lightbox
 
         // 5. Cálculo Principal: Derivación de Tasas y Asignación de Costos
         window.calculateCost = function() {
-            // Función auxiliar para obtener valores numéricos
-            const getVal = (id) => parseFloat(document.getElementById(id).value) || 0;
-
+            
             // --- A. CÁLCULO DE TASAS UNITARIAS (PASO 1) ---
 
             // 1. Tasa PLA / LED
@@ -691,7 +700,7 @@ Calculadora de costos Lightbox
             document.getElementById('derived_costo_led').textContent = unitLedBase.toFixed(4);
 
             const unitLedWhite = unitLedBase;
-            const unitLedRGB = unitLedBase * 1.5; // Factor de costo RGB
+            const unitLedRGB = unitLedBase * 1.5; // Factor de costo RGB (asumido)
 
             // 2. Tasa Mano de Obra por Minuto (MOM)
             const salarioBrutoMensual = getVal('salario_bruto_mensual');
@@ -712,13 +721,17 @@ Calculadora de costos Lightbox
             document.getElementById('derived_costo_energia_minuto').textContent = costoEnergiaMinuto.toFixed(4);
             document.getElementById('costo_energia_minuto').value = costoEnergiaMinuto; 
 
-            // 4. Tasa CIF por Minuto 
-            const cifTotalMensual = getVal('cif_total_mensual');
-            const minutosProduccionMensual = getVal('minutos_produccion_mensual');
-            const cifPorMinuto = minutosProduccionMensual > 0 ? cifTotalMensual / minutosProduccionMensual : 0;
+            // 4. Costo Fijo por Unidad (CF/U)
+            const rentaMensual = getVal('renta_mensual');
+            const salariosFijosMensual = getVal('salarios_fijos_mensual');
+            const serviciosFijosMensual = getVal('servicios_fijos_mensual');
+            const unidadesAProducirMensual = getVal('unidades_a_producir_mensual');
             
-            document.getElementById('derived_cif_por_minuto').textContent = cifPorMinuto.toFixed(2);
-            document.getElementById('cif_por_minuto').value = cifPorMinuto; 
+            const costoFijoTotal = rentaMensual + salariosFijosMensual + serviciosFijosMensual;
+            const costoFijoUnidadDerivado = unidadesAProducirMensual > 0 ? costoFijoTotal / unidadesAProducirMensual : 0;
+
+            document.getElementById('derived_costo_fijo_unidad').textContent = costoFijoUnidadDerivado.toFixed(2);
+            document.getElementById('costo_fijo_unidad').value = costoFijoUnidadDerivado;
 
 
             // --- B. CÁLCULO DE COSTOS POR PRODUCTO (ASIGNACIÓN) ---
@@ -739,17 +752,15 @@ Calculadora de costos Lightbox
                 // Costos MD específicos de Lightbox
                 const sectorsLed = getVal('sectores_led');
                 const typeLed = document.getElementById('tipo_led').value;
-                // Asumimos 3 LEDs por sector, ajustar si es necesario
-                costTotalLed = sectorsLed * 3 * (typeLed === 'RGB' ? unitLedRGB : unitLedWhite); 
+                costTotalLed = sectorsLed * 3 * (typeLed === 'RGB' ? unitLedRGB : unitLedWhite); // Asumiendo 3 LEDs por sector
                 cFuente = getVal('costo_fuente');
-                cPlugHembra = getVal('costo_plug_hembra'); // Costo fijo por unidad
+                cPlugHembra = getVal('costo_plug_hembra'); 
                 cEmb = getVal('costo_embalaje');
             }
 
 
             // --- VISIBILIDAD DE FILAS EN RESUMEN (PASO 3) ---
             
-            // Lista de IDs de filas que solo se ven en modo Lightbox
             const lightboxRows = ['row-leds', 'row-fuente', 'row-plug', 'row-embalaje'];
 
             lightboxRows.forEach(rowId => {
@@ -786,7 +797,8 @@ Calculadora de costos Lightbox
             if (extraStart.parentElement) {
                 // Limpiar filas anteriores de extras
                 let nextSibling = extraStart.nextElementSibling;
-                while (nextSibling && nextSibling.id !== 'subtotal_materiales') {
+                // Asumimos que la siguiente fila es el subtotal materiales, si no es una fila extra
+                while (nextSibling && !nextSibling.classList.contains('font-bold')) {
                     const temp = nextSibling.nextElementSibling;
                     nextSibling.remove();
                     nextSibling = temp;
@@ -800,20 +812,24 @@ Calculadora de costos Lightbox
             // CÁLCULO DE TIEMPOS
             const minutosImpresionTotal = (getVal('horas_impresion') * 60) + getVal('minutos_impresion');
             const modEnsamblajeMin = getVal('mod_ensamblaje_min');
-            const tiempoTotalMinutos = minutosImpresionTotal + modEnsamblajeMin;
-
-            // COSTO TOTAL DE PRODUCCIÓN (asignación de tasas)
+            
+            // COSTO TOTAL DE CONVERSIÓN (asignación de tasas variables)
             const cMOD = modEnsamblajeMin * costoModMinuto; // MOD solo aplica a Ensamblaje
             const cEnergia = minutosImpresionTotal * costoEnergiaMinuto; // Energía solo aplica a Impresión
-            const cCIF = tiempoTotalMinutos * cifPorMinuto; // CIF aplica a tiempo total
+            
+            // CF/U Derivado se toma directamente
+            const cFijoDerivado = costoFijoUnidadDerivado;
+
 
             // RESUMEN DE COSTOS
             const subtotalMateriales = costTotalPla + costTotalLed + cFuente + cPlugHembra + cEmb + costTotalExtras;
-            const subtotalProduccion = cMOD + cEnergia + cCIF;
-            const costoFijoUnidad = getVal('fijo_por_unidad');
+            const costoFijoUnidadAdicional = getVal('fijo_por_unidad');
+
+            // Subtotal Producción/Conversión/Fijos = MOD + Energía + CF/U Derivado + Fijo Adicional
+            const subtotalProduccion = cMOD + cEnergia + cFijoDerivado + costoFijoUnidadAdicional;
             
             // CUF = Costo Unitario de Fabricación
-            const CUF = subtotalMateriales + subtotalProduccion + costoFijoUnidad;
+            const CUF = subtotalMateriales + subtotalProduccion;
 
             // PRECIO FINAL
             const margen = getVal('margen_ganancia') / 100;
@@ -821,7 +837,7 @@ Calculadora de costos Lightbox
 
             // Precio de Venta (PV) = CUF / (1 - Margen - Comisiones)
             const divisor = 1 - margen - comisiones;
-            const precioFinal = divisor > 0 ? CUF / divisor : CUF * 2; // Factor de seguridad si la suma de márgenes supera 1
+            const precioFinal = divisor > 0 ? CUF / divisor : CUF * 2; 
 
             
             // --- C. ACTUALIZACIÓN DEL RESUMEN (PASO 3) ---
@@ -841,25 +857,23 @@ Calculadora de costos Lightbox
             document.getElementById('costo_embalaje_calc').textContent = `$${cEmb.toFixed(2)}`;
             document.getElementById('subtotal_materiales').textContent = `$${subtotalMateriales.toFixed(2)}`;
             
-            // Desglose de Producción y Fijos
+            // Desglose de Conversión y Fijos
             document.getElementById('costo_mod_calc').textContent = `$${cMOD.toFixed(2)}`;
             document.getElementById('costo_energia_calc').textContent = `$${cEnergia.toFixed(2)}`;
-            document.getElementById('costo_cif_calc').textContent = `$${cCIF.toFixed(2)}`;
-            document.getElementById('costo_fijo_calc').textContent = `$${costoFijoUnidad.toFixed(2)}`;
+            document.getElementById('costo_fijo_unidad_calc').textContent = `$${cFijoDerivado.toFixed(2)}`;
+            document.getElementById('costo_fijo_calc').textContent = `$${costoFijoUnidadAdicional.toFixed(2)}`;
             document.getElementById('subtotal_produccion').textContent = `$${subtotalProduccion.toFixed(2)}`;
             
-            // Guardar datos base cada vez que se recalcula (para persistencia)
+            // Guardar datos base
             window.saveData(); 
         }
 
         // Ejecutar cálculo y renderizado inicial al cargar la página
-        // La carga de datos de Firebase llamará a calculateCost() al terminar, 
-        // pero lo dejamos aquí como fallback si Firebase no está listo.
         document.addEventListener('DOMContentLoaded', () => {
             window.renderCustomMaterials();
             window.renderModelSelector();
             window.calculateCost();
-            window.showStep(1); // Asegurar que el Paso 1 es visible al inicio
+            window.showStep(1); 
         });
 
     </script>
