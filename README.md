@@ -371,10 +371,38 @@ Calculadora de costos Lightbox
 
         setLogLevel('Debug');
 
-        // Variables Globales de Canvas
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        // --- Configuración de Credenciales de Firebase ---
+        
+        // 1. CONFIGURACIÓN DE RESPALDO (FALLBACK) PARA TU SITIO WEB (IMPORTANTE)
+        // ** Reemplaza los valores de 'YOUR_...' con tus credenciales reales de Firebase **
+        const YOUR_FIREBASE_CONFIG = {
+            apiKey: "AIzaSyA1Yy13XMF2oB7KkFJVPOKvp8z01YiuNF0", 
+            authDomain: "calculador-de-costos-c4f71.firebaseapp.com",
+            projectId: "calculador-de-costos-c4f71",
+            storageBucket: "calculador-de-costos-c4f71.firebasestorage.app",
+            messagingSenderId: "880952513286",
+            appId: "1:880952513286:web:3a6798f1ead2527977c487"
+        };
+
+        // 2. Lógica para obtener las credenciales (Prioriza Canvas, luego Fallback)
+        let firebaseConfig = YOUR_FIREBASE_CONFIG;
+        let appId = 'github-page-calculator'; // ID de app genérico para fuera de Canvas
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Comprobar si las variables de Canvas están presentes
+        if (typeof __firebase_config !== 'undefined' && typeof __app_id !== 'undefined') {
+            try {
+                firebaseConfig = JSON.parse(__firebase_config);
+                appId = __app_id;
+                console.log("INFO: Usando configuración de Firebase de Canvas.");
+            } catch (e) {
+                console.warn("ADVERTENCIA: Fallo al parsear __firebase_config, usando configuración de respaldo.");
+            }
+        } else {
+            console.log("INFO: Usando configuración de Firebase de respaldo (YOUR_FIREBASE_CONFIG).");
+        }
+        
+        // --- Variables y Servicios Globales ---
 
         let db, auth, userId = null;
         const googleProvider = new GoogleAuthProvider(); // Instanciamos el proveedor una vez
@@ -421,6 +449,8 @@ Calculadora de costos Lightbox
                     friendlyMessage = "ERROR: Dominio NO autorizado (auth/unauthorized-domain). Asegúrate de haber añadido 'robertocruzbustos-pixel.github.io' a Firebase Auth.";
                 } else if (error.code === 'auth/popup-closed-by-user') {
                      friendlyMessage = "Ventana de inicio de sesión cerrada por el usuario.";
+                } else if (error.code === 'auth/network-request-failed') {
+                    friendlyMessage = "ERROR: Fallo de red/conexión. Revisa la consola y tu configuración de API Key.";
                 } else {
                     friendlyMessage = `Error de Google Auth: ${error.code}. Revisa la consola.`;
                 }
@@ -461,6 +491,13 @@ Calculadora de costos Lightbox
 
         // --- Inicialización de Firebase ---
         async function initFirebase() {
+            // Verifica que la configuración NO esté vacía
+            if (Object.keys(firebaseConfig).length === 0 || !firebaseConfig.apiKey || firebaseConfig.apiKey.includes('YOUR_')) {
+                displayStatus("ERROR CRÍTICO: Debes reemplazar 'YOUR_...' con tus credenciales reales de Firebase en el código fuente.", true);
+                userInfo.textContent = 'ERROR de Configuración.';
+                return;
+            }
+
             try {
                 const app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -490,7 +527,7 @@ Calculadora de costos Lightbox
                         userId = null;
                         updateAuthUI(null);
                         // Si no hay usuario, cargamos los defaults
-                        if (!Object.keys(window.appData.models).length) {
+                        if (!window.appData.models || !Object.keys(window.appData.models).length) {
                              window.renderCustomMaterials();
                              window.renderModelSelector();
                              window.calculateCost(); 
@@ -500,7 +537,7 @@ Calculadora de costos Lightbox
 
             } catch (e) {
                 console.error("Error de Firebase (Inicialización crítica):", e);
-                displayStatus('Error CRÍTICO al conectar con Firebase. Revisar configuración.', true);
+                displayStatus(`Error CRÍTICO al conectar con Firebase: ${e.message}`, true);
                 userInfo.textContent = 'Error de conexión a Firebase.';
             }
         }
@@ -517,7 +554,7 @@ Calculadora de costos Lightbox
                     window.appData = data;
                     
                     // Restaurar Inputs Simples (Paso 1)
-                    document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
+                    document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"], #step-1 select').forEach(el => {
                         const savedValue = data.baseCosts[el.id];
                         if(el && savedValue !== undefined) el.value = savedValue;
                     });
@@ -545,8 +582,8 @@ Calculadora de costos Lightbox
             
             // 1. Capturar inputs base 
             window.appData.baseCosts = {};
-            document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"]').forEach(el => {
-                window.appData.baseCosts[el.id] = parseFloat(el.value) || 0;
+            document.querySelectorAll('#step-1 input[type="number"], #step-1 input[type="hidden"], #step-1 select').forEach(el => {
+                window.appData.baseCosts[el.id] = parseFloat(el.value) || el.value; // Guardar valor de select
             });
 
             try {
